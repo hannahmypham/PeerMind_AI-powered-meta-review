@@ -5,6 +5,7 @@ from pathlib import Path
 import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from tqdm import tqdm
+from peft import PeftModel, PeftConfig
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model_path", type=str, required=True)
@@ -21,19 +22,36 @@ device = "mps" if torch.backends.mps.is_available() else "cpu"
 print(f"Using device: {device}")
 print(f"Model: {MODEL_PATH}")
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_PATH)
+# Load LoRA config to get base model name
+peft_config = PeftConfig.from_pretrained(MODEL_PATH)
+
+tokenizer = AutoTokenizer.from_pretrained(peft_config.base_model_name_or_path)
+
+base_model = AutoModelForSeq2SeqLM.from_pretrained(
+    peft_config.base_model_name_or_path
+)
+
+model = PeftModel.from_pretrained(base_model, MODEL_PATH)
+
+# Optional but recommended: merge LoRA weights for inference
+model = model.merge_and_unload()
 model.to(device)
 model.eval()
 
 Path("data/predictions").mkdir(parents=True, exist_ok=True)
 
 def extract_decision(text):
-    text = text.strip()
+    text = (text or "").strip()
     if "DECISION:" in text:
-        after = text.split("DECISION:")[1].strip()
-        return after.split("\n")[0].strip()
-    return ""
+        after = text.split("DECISION:", 1)[1].strip()
+        first_line = after.split("\n", 1)[0].strip()
+        up = first_line.upper()
+        if up.startswith("ACCEPT"):
+            return "ACCEPT"
+        if up.startswith("REJECT"):
+            return "REJECT"
+        return first_line
+    return "UNKNOWN"
 
 rows = []
 

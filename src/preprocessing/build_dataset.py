@@ -150,16 +150,14 @@ def build_input_text(
 
     # instruction header (consistent across all examples)
     parts.append(
-        "TASK:\n"
-        "Write an ICLR meta-review based on the paper and reviewer feedback. "
-        "Also output a final decision.\n"
-    )
-    parts.append(
-        "OUTPUT FORMAT:\n"
+        "You are a senior ICLR meta-reviewer.\n"
+        "Based on the paper and reviews, write the final meta-review and decision.\n\n"
+        "You MUST follow this exact format:\n"
         "DECISION: <ACCEPT or REJECT>\n"
         "META_REVIEW:\n"
-        "<text>\n"
-    )
+        "<your full meta-review>\n"
+        "Do not output anything outside this format.\n"
+    )   
 
     parts.append(f"PAPER ID:\n{paper_id}\n")
     parts.append(f"PAPER TITLE:\n{trunc_chars(title, trunc.title) or 'N/A'}\n")
