@@ -17,12 +17,20 @@ __pycache__/
 # ==========================================================
 # Data (DO NOT COMMIT RAW OR PROCESSED DATA)
 # ==========================================================
+# Ignore everything in data
 data/*
+
+# But keep the data folder itself
+!data/
+
+# Allow predictions
 !data/predictions/
 !data/predictions/*.csv
 
-# If you ever want to allow small example files later:
-# !data/sample/
+# Allow top_30 folder
+!data/top_30/
+!data/top_30/*.csv
+
 
 # ==========================================================
 # Model Outputs / Training Runs
