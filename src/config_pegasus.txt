@@ -1,0 +1,134 @@
+Dataset Format
+Each dataset entry contains a paper identifier, structured input prompt, and target meta-review output:
+
+paper_id: unique submission identifier
+input_text: formatted paper and review information
+target_text: decision and meta-review text
+
+Training Configuration
+Model: Pegasus-X Base
+Maximum input length: 1024 tokens
+Maximum target length: 384 tokens
+Learning rate: 3e-5
+Training batch size: 2
+Gradient accumulation steps: 4
+Effective batch size: 8
+Number of epochs: 3
+Optimizer: AdamW
+Mixed precision: FP16 enabled when GPU available
+
+Checkpointing
+Training automatically saves checkpoints every 1000 steps.
+The model restores the best checkpoint based on validation loss.
+Training automatically resumes if interrupted.
+
+Training
+Run training using the training script or Colab notebook.
+The trained model is saved inside the pegasus_x_meta_review directory.
+
+Inference
+Prediction generates final decisions and meta-reviews for unseen papers using the trained model. Outputs are saved as a CSV file containing paper IDs, predicted decisions, and generated meta-reviews.
+
+Generation Settings
+Beam search size: 4
+Maximum generated tokens: 300
+Length penalty: 0.8
+Early stopping enabled
+
+Output Format
+The model produces structured outputs of the form:
+
+DECISION: ACCEPT or REJECT
+META_REVIEW:
+Generated meta-review text
+
+Training Pipeline
+ICLR review data is converted into structured prompts, tokenized, and processed by the Pegasus encoder–decoder model. The model is optimized using cross-entropy loss and evaluated periodically during training. The best validation checkpoint is selected for final inference.
+
+Model
+The system uses the google/pegasus-large encoder–decoder transformer architecture. Pegasus-Large contains significantly more parameters than Pegasus-Base/X and provides stronger abstractive summarization and reasoning capacity for long structured inputs.
+
+The model is fine-tuned using parameter-efficient LoRA adaptation to enable training of large models within limited GPU memory.
+
+Repository Structure
+data/
+ train.jsonl
+ val.jsonl
+ test.jsonl
+
+pegasus_large_meta_review/
+ checkpoint-xxxx/
+ adapter_model.bin
+ adapter_config.json
+
+train_lora.py
+predict.py
+README.md
+
+Dataset Format
+Each dataset entry contains:
+
+paper_id: unique submission identifier
+input_text: structured prompt containing paper metadata and reviews
+target_text: formatted decision and meta-review output
+
+Training Configuration
+Base Model: Pegasus-Large
+Training Method: LoRA fine-tuning
+Maximum input length: 1024 tokens
+Maximum target length: 384 tokens
+
+Learning rate: 2e-4
+Training batch size: 1
+Gradient accumulation steps: 8
+Effective batch size: 8
+
+Number of epochs: 3
+Optimizer: AdamW
+Mixed precision: FP16 enabled when GPU available
+
+LoRA Configuration
+LoRA rank (r): 16
+LoRA alpha: 32
+LoRA dropout: 0.1
+
+LoRA applied to attention projection layers:
+query projection
+key projection
+value projection
+output projection
+
+Only adapter parameters are trained while base Pegasus weights remain frozen.
+
+Checkpointing
+Checkpoints are saved every 1000 training steps.
+Only LoRA adapter weights are stored, reducing storage requirements.
+Training automatically resumes from the latest checkpoint if interrupted.
+
+Training
+Training fine-tunes Pegasus-Large using parameter-efficient adaptation.
+The final adapter weights are stored in the output directory and can be merged with the base model during inference.
+
+Inference
+During prediction, the Pegasus-Large base model is loaded and LoRA adapter weights are applied. Adapter weights may optionally be merged into the base model for faster inference.
+
+Generation Settings
+Beam search size: 4
+Maximum generated tokens: 300
+Length penalty: 0.8
+Early stopping enabled
+
+Output Format
+The model generates structured outputs:
+
+DECISION: ACCEPT or REJECT
+META_REVIEW:
+Generated meta-review text
+
+Training Pipeline
+ICLR review-level data is aggregated into paper-level structured prompts. Inputs are tokenized and passed through the Pegasus encoder. The decoder generates final decisions and meta-reviews conditioned on reviewer evidence. LoRA adapters learn task-specific transformations without modifying pretrained backbone weights.
+
+Hardware Requirements
+Recommended GPU: NVIDIA A100 or L4
+Minimum VRAM: 16–24GB
+Training feasible on Colab using LoRA adaptation
