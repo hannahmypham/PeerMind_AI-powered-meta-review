@@ -26,8 +26,8 @@ See [DATADICTIONARY_README.md](DATADICTIONARY_README.md) for column descriptions
 | Run | Model | Config | Status |
 |-----|-------|--------|--------|
 | run1 | `google/flan-t5-base` | `configs/run1_finetune.yaml` | Done |
-| run2 | `facebook/bart-large-cnn` | `configs/run2_bart.yaml` | Training |
-| run3 | `google/pegasus-large` | `configs/run3_pegasus.yaml` | Planned |
+| run2 | `facebook/bart-large-cnn` | `configs/run2_bart.yaml` | Done |
+| run3 | `google/pegasus-large` | Notebook only | Done |
 
 All models are fine-tuned with **LoRA** (via PEFT) for parameter-efficient training.
 
@@ -35,46 +35,56 @@ All models are fine-tuned with **LoRA** (via PEFT) for parameter-efficient train
 
 ```mermaid
 flowchart TB
-    subgraph Data["Data Pipeline"]
-        A[OpenReview API] -->|OpenReviewDataExtract.py| B[(Raw CSV<br>~8.6K papers, ~30K reviews)]
-        B -->|build_dataset.py| C1[Group reviews by paper_id]
-        C1 --> C2[Build structured prompts<br>title + abstract + aggregates + reviews]
-        C2 --> C3[Build targets<br>DECISION + META_REVIEW]
-        C3 --> C4[Stratified split 80/10/10]
-        C4 --> D[(train.jsonl / val.jsonl / test.jsonl)]
-    end
 
-    subgraph Train["Training (train_flan_t5.py)"]
-        E[Load YAML config] --> F[Load pretrained model<br>FLAN-T5 / BART / Pegasus]
-        E --> T0[Load tokenizer]
-        T0 --> J[Tokenize dataset ds.map<br>input_ids + labels]
-        F --> G{LoRA enabled?}
-        G -- Yes --> H[Apply LoRA adapter<br>BART/Pegasus: q_proj, v_proj<br>T5: q, v]
-        G -- No --> I[Use full model]
-        H --> K[Seq2SeqTrainer<br>TrainingArgs: eval/save steps,<br>grad accumulation, predict_with_generate]
-        I --> K
-        J --> K
-        K --> L[(Saved run folder<br>runs/run_name/<br>weights + tokenizer + config)]
-    end
+%% =========================
+%% LAYOUT + CONTENT
+%% =========================
 
-    subgraph Predict["Inference (generate_predictions.py)"]
-        L --> M[Load trained model + tokenizer]
-        D --> N[Read test.jsonl]
-        N --> O[Generate predictions<br>num_beams=4, max_new_tokens=256]
-        M --> O
-        O --> P[Extract decision + meta-review]
-        P --> Q[(predictions.csv<br>paper_id / true / pred)]
-    end
+subgraph DATA["① Data Pipeline"]
+direction TB
+A[🗂️ OpenReview API]
+B[🧹 Data Processing<br/><span style="font-size:12px">clean • group • prompt-build</span>]
+C[📦 Dataset<br/><span style="font-size:12px">train / val / test</span>]
+A --> B --> C
+end
 
-    subgraph Eval["Evaluation"]
-        Q --> R[Decision metrics<br>Accuracy / F1 / Precision / Recall]
-        Q --> S[Text metrics<br>ROUGE-1 / ROUGE-2 / ROUGE-L / BERTScore]
-        R --> EVAL_OUT[(eval_metrics.json)]
-        S --> EVAL_OUT
-        EVAL_OUT --> U[Compare models<br>select best]
-    end
+subgraph TRAIN["② Model Training"]
+direction TB
+D[🧠 Train Seq2Seq Model<br/><span style="font-size:12px">FLAN-T5 • BART • Pegasus</span>]
+E[✅ Trained Checkpoint<br/><span style="font-size:12px">best weights saved</span>]
+C --> D --> E
+end
 
-    D --> Train
+subgraph EVAL["③ Inference & Evaluation"]
+direction TB
+F[✍️ Inference<br/><span style="font-size:12px">generate decision + meta-review</span>]
+G[📄 Predictions<br/><span style="font-size:12px">labels + text outputs</span>]
+H[📊 Evaluation<br/><span style="font-size:12px">classification + text metrics</span>]
+I[🏁 Model Comparison<br/><span style="font-size:12px">select best model</span>]
+E --> F --> G --> H --> I
+C -. test set .-> F
+end
+
+%% =========================
+%% STYLES (publication-like)
+%% =========================
+
+classDef node fill:#ffffff,stroke:#2b2b2b,stroke-width:1.6px,rx:10,ry:10,color:#111;
+classDef data fill:#E8F2FF,stroke:#2F6FE4,stroke-width:2px,rx:12,ry:12,color:#0b1b3a;
+classDef train fill:#E9F8EE,stroke:#2E9D57,stroke-width:2px,rx:12,ry:12,color:#0b2a16;
+classDef eval fill:#FFF1E6,stroke:#E57A1A,stroke-width:2px,rx:12,ry:12,color:#3a1c06;
+
+class A,B,C data;
+class D,E train;
+class F,G,H,I eval;
+
+%% Make subgraph containers lightly tinted
+style DATA fill:#F5FAFF,stroke:#2F6FE4,stroke-width:2px,rx:14,ry:14
+style TRAIN fill:#F4FFF7,stroke:#2E9D57,stroke-width:2px,rx:14,ry:14
+style EVAL fill:#FFF8F2,stroke:#E57A1A,stroke-width:2px,rx:14,ry:14
+
+%% Optional: make the dotted link (test set) look cleaner
+linkStyle 8 stroke:#777,stroke-width:1.5px,stroke-dasharray:5 5
 ```
 
 ## Project Structure
@@ -89,8 +99,12 @@ meta-review-ai/
 ├── src/
 │   ├── preprocessing/
 │   │   └── build_dataset.py        # CSV → structured JSONL (one row per paper)
+│   ├── OpenReviewDataExtract.py    # Scrape ICLR reviews from OpenReview API
 │   ├── train_flan_t5.py            # Fine-tune any seq2seq model with LoRA
 │   ├── generate_predictions.py     # Run inference on test set
+│   ├── train_bart_colab.ipynb      # BART training (Colab)
+│   ├── pegasus-large_lora_train_and_generate.ipynb
+│   ├── pegasus-x-base_train_and_generate.ipynb
 │   └── eval_flan_t5.py             # Evaluation metrics (TODO)
 ├── runs/                           # Saved model checkpoints (not tracked)
 ├── requirements.txt
@@ -108,7 +122,7 @@ pip install -r requirements.txt
 ### 1. Data Collection (optional — raw CSV already available)
 
 ```bash
-python data/predictions/OpenReviewDataExtract.py
+python src/OpenReviewDataExtract.py
 ```
 
 ### 2. Preprocessing
@@ -136,6 +150,7 @@ python src/train_flan_t5.py --config configs/run2_bart.yaml
 ```bash
 python src/generate_predictions.py --model_path runs/flan_t5_run1
 python src/generate_predictions.py --model_path runs/bart_large_cnn_run2
+python src/generate_predictions.py --model_path pegasus_large_lora   # if trained via notebook
 ```
 
 ## Input/Output Format
