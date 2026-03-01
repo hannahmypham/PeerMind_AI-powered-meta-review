@@ -105,6 +105,8 @@ meta-review-ai/
 │   ├── train_bart_colab.ipynb      # BART training (Colab)
 │   ├── pegasus-large_lora_train_and_generate.ipynb
 │   ├── pegasus-x-base_train_and_generate.ipynb
+│   ├── demo_app.py                 # Streamlit demo (Pegasus, requires checkpoint)
+│   ├── demo_csv.py                 # Streamlit demo (CSV only, no model)
 │   └── eval_flan_t5.py             # Evaluation metrics (TODO)
 ├── runs/                           # Saved model checkpoints (not tracked)
 ├── requirements.txt
@@ -152,6 +154,21 @@ python src/generate_predictions.py --model_path runs/flan_t5_run1
 python src/generate_predictions.py --model_path runs/bart_large_cnn_run2
 python src/generate_predictions.py --model_path pegasus_large_lora   # if trained via notebook
 ```
+
+### 5. Demo (Streamlit)
+
+**Option A — With model** (interactive generation):
+```bash
+pip install streamlit
+streamlit run src/demo_app.py
+```
+Place your trained Pegasus checkpoint at `pegasus_large_lora/` (or set path in sidebar).
+
+**Option B — CSV only** (no model, no training):
+```bash
+streamlit run src/demo_csv.py
+```
+Browse pre-computed predictions from `pegasus_x_meta_review_predictions.csv`. No checkpoint required.
 
 ## Input/Output Format
 

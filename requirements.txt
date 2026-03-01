@@ -59,6 +59,7 @@ rouge_score==0.1.2
 safetensors==0.7.0
 scikit-learn==1.7.2
 scipy==1.15.3
+streamlit>=1.28.0
 shellingham==1.5.4
 six==1.17.0
 sympy==1.14.0

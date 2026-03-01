@@ -74,7 +74,10 @@ with open(TEST_PATH, "r", encoding="utf-8") as f:
             outputs = model.generate(
                 **inputs,
                 max_new_tokens=256,
-                num_beams=4
+                num_beams=4,
+                length_penalty=0.8,
+                repetition_penalty=2.5,
+                no_repeat_ngram_size=3,
             )
 
         pred_text = tokenizer.decode(
