@@ -7,8 +7,8 @@ from tqdm import tqdm
 # ==========================================
 # 1. SETUP & CONFIGURATION
 # ==========================================
-USERNAME = '' 
-PASSWORD = '!'
+USERNAME = 'hap014@ucsd.edu' 
+PASSWORD = 'ILoveBoba1217!'
 VENUE_ID = 'ICLR.cc/2025/Conference'
 OUTPUT_CSV = 'data/raw/iclr_2025_detailed_reviews.csv'
 
@@ -63,6 +63,7 @@ def scrape_iclr_data():
         paper_metadata = {
             'paper_id': sub.id,
             'title': sub.content.get('title', {}).get('value', ''),
+            'abstract': clean_text(sub.content.get('abstract', {}).get('value', '')),
             'submission_time': format_date(sub.cdate), # CREATION DATE
             'official_label': 'Pending',
             'meta_review': '',
