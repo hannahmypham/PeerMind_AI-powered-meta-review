@@ -27,6 +27,10 @@ data/*
 !data/predictions/
 !data/predictions/*.csv
 
+# Allow demo metadata (for Streamlit deploy: paper titles + abstracts)
+!data/demo/
+!data/demo/*.csv
+
 # Allow top_30 folder
 !data/top_30/
 !data/top_30/*.csv

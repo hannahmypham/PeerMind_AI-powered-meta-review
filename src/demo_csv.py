@@ -16,6 +16,7 @@ import streamlit as st
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CSV_PATH = PROJECT_ROOT / "data" / "predictions" / "pegasus_x_meta_review_predictions.csv"
 RAW_CSV_DIR = PROJECT_ROOT / "data" / "raw"
+DEMO_METADATA_PATH = PROJECT_ROOT / "data" / "demo" / "paper_metadata.csv"  # fallback for Streamlit deploy
 LOGO_PATH = PROJECT_ROOT / "assets" / "peermind_logo.png"
 
 # Make logo look good in header: give it a fixed "card" and a larger, crisp size.
@@ -217,66 +218,77 @@ def load_predictions(csv_path: Path) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def load_paper_metadata(raw_dir: Path) -> dict:
+def load_paper_metadata(raw_dir: Path, demo_metadata_path: Path | None = None) -> dict:
     """
-    Load paper_id -> {title, abstract, reviews} from ALL raw CSVs in data/raw/.
-    This avoids the 'first file only' demo failure.
+    Load paper_id -> {title, abstract, reviews} from:
+    1. Raw CSVs in data/raw/ (full data, when available locally)
+    2. Fallback: data/demo/paper_metadata.csv (title + abstract only, for Streamlit deploy)
     """
     meta = {}
-    if not raw_dir.exists():
-        return meta
 
-    csv_files = sorted(list(raw_dir.glob("*.csv")))
-    if not csv_files:
-        return meta
-
-    try:
-        dfs = []
-        for fp in csv_files:
+    # Try raw CSVs first (has reviews)
+    if raw_dir.exists():
+        csv_files = sorted(list(raw_dir.glob("*.csv")))
+        if csv_files:
             try:
-                d = pd.read_csv(fp)
-                if "paper_id" in d.columns:
-                    dfs.append(d)
+                dfs = []
+                for fp in csv_files:
+                    try:
+                        d = pd.read_csv(fp)
+                        if "paper_id" in d.columns:
+                            dfs.append(d)
+                    except Exception:
+                        continue
+
+                if dfs:
+                    df_raw = pd.concat(dfs, ignore_index=True)
+                    df_raw["paper_id"] = df_raw["paper_id"].astype(str)
+
+                    for paper_id, g in df_raw.groupby("paper_id"):
+                        title = "N/A"
+                        abstract = "N/A"
+
+                        if "title" in g.columns:
+                            val = g["title"].iloc[0]
+                            if pd.notna(val) and str(val).strip():
+                                title = str(val).strip()
+
+                        if "abstract" in g.columns:
+                            val = g["abstract"].iloc[0]
+                            if pd.notna(val) and str(val).strip():
+                                abstract = str(val).strip()
+
+                        reviews = []
+                        for _, r in g.iterrows():
+                            reviews.append(
+                                {
+                                    "final_rating": r.get("final_rating"),
+                                    "summary": _safe(r.get("summary")),
+                                    "strengths": _safe(r.get("strengths")),
+                                    "weaknesses": _safe(r.get("weaknesses")),
+                                    "questions": _safe(r.get("questions")),
+                                }
+                            )
+
+                        meta[str(paper_id)] = {"title": title, "abstract": abstract, "reviews": reviews}
+                    return meta
             except Exception:
-                continue
+                pass
 
-        if not dfs:
-            return meta
-
-        df_raw = pd.concat(dfs, ignore_index=True)
-        df_raw["paper_id"] = df_raw["paper_id"].astype(str)
-
-        for paper_id, g in df_raw.groupby("paper_id"):
-            title = "N/A"
-            abstract = "N/A"
-
-            if "title" in g.columns:
-                val = g["title"].iloc[0]
-                if pd.notna(val) and str(val).strip():
-                    title = str(val).strip()
-
-            if "abstract" in g.columns:
-                val = g["abstract"].iloc[0]
-                if pd.notna(val) and str(val).strip():
-                    abstract = str(val).strip()
-
-            reviews = []
-            for _, r in g.iterrows():
-                reviews.append(
-                    {
-                        "final_rating": r.get("final_rating"),
-                        "summary": _safe(r.get("summary")),
-                        "strengths": _safe(r.get("strengths")),
-                        "weaknesses": _safe(r.get("weaknesses")),
-                        "questions": _safe(r.get("questions")),
-                    }
-                )
-
-            meta[str(paper_id)] = {"title": title, "abstract": abstract, "reviews": reviews}
-
-    except Exception:
-        # Don't crash presentation; just show fewer details.
-        return {}
+    # Fallback: demo metadata (title + abstract only, for Streamlit deploy)
+    demo_path = demo_metadata_path or (raw_dir.parent / "demo" / "paper_metadata.csv")
+    if demo_path.exists():
+        try:
+            df = pd.read_csv(demo_path)
+            if "paper_id" in df.columns:
+                df["paper_id"] = df["paper_id"].astype(str)
+                for _, r in df.iterrows():
+                    pid = str(r["paper_id"])
+                    title = _safe(r.get("title")) or "N/A"
+                    abstract = _safe(r.get("abstract")) or "N/A"
+                    meta[pid] = {"title": title, "abstract": abstract, "reviews": []}
+        except Exception:
+            pass
 
     return meta
 
@@ -326,7 +338,7 @@ def main():
         return
 
     df = load_predictions(CSV_PATH)
-    paper_meta = load_paper_metadata(RAW_CSV_DIR)
+    paper_meta = load_paper_metadata(RAW_CSV_DIR, DEMO_METADATA_PATH)
 
     # Header: hero only (logo in sidebar)
     hero_html = f"""
