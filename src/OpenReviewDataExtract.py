@@ -7,8 +7,8 @@ from tqdm import tqdm
 # ==========================================
 # 1. SETUP & CONFIGURATION
 # ==========================================
-USERNAME = 'hap014@ucsd.edu' 
-PASSWORD = 'ILoveBoba1217!'
+USERNAME = '' 
+PASSWORD = '!'
 VENUE_ID = 'ICLR.cc/2025/Conference'
 OUTPUT_CSV = 'data/raw/iclr_2025_detailed_reviews.csv'
 
