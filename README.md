@@ -27,7 +27,7 @@ See [DATADICTIONARY_README.md](DATADICTIONARY_README.md) for column descriptions
 |-----|-------|--------|--------|
 | run1 | `google/flan-t5-base` | `configs/run1_finetune.yaml` | Done |
 | run2 | `facebook/bart-large-cnn` | `configs/run2_bart.yaml` | Done |
-| run3 | `google/pegasus-large` | Notebook only | Done |
+| run3 | `google/pegasus-x` | Notebook only | Done |
 
 All models are fine-tuned with **LoRA** (via PEFT) for parameter-efficient training.
 
