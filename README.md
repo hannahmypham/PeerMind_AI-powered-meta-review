@@ -50,7 +50,7 @@ end
 
 subgraph TRAIN["② Model Training"]
 direction TB
-D[🧠 Train Seq2Seq Model<br/><span style="font-size:12px">FLAN-T5 • BART • Pegasus</span>]
+D[🧠 Train Seq2Seq Model<br/><span style="font-size:12px">FLAN-T5 • BART • PegasusX Base</span>]
 E[✅ Trained Checkpoint<br/><span style="font-size:12px">best weights saved</span>]
 C --> D --> E
 end
